@@ -1,0 +1,130 @@
+service: handlessMoocho
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-warmup
+
+custom:
+  allVpcSettings:
+    dev:
+      vpc: 'no vpc for develop environment'
+    production:
+      vpc:
+        securityGroupIds:
+          - sg-073def74
+        subnetIds:
+          - subnet-b2b1f49e
+          - subnet-eee702d1
+          - subnet-3e377232
+  vpcSettings: &vpcSettings
+    vpc: ${self:custom.allVpcSettings.${self:provider.stage}.vpc}
+  config: ../../envs/credentials.${self:provider.stage}.json
+
+provider:
+  name: aws
+  memorySize: 2048
+  runtime: nodejs12.x
+  stage: ${opt:stage,'local_dev'}
+  region: us-east-1
+  deploymentBucket:
+    name: ${file(${self:custom.config}):deploymentBucket}
+  environment:
+    ACCOUNT_ID: ${file(${self:custom.config}):awsAccountId}
+    FILE_ENVIRONMENT: ${file(${self:custom.config}):fileEnvironment}
+    RUN_LIKE: ${file(${self:custom.config}):run_like}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: "*"
+  timeout: 30
+
+  <<: *vpcSettings
+
+package:
+  exclude:
+    - node_modules/**
+  include:
+    - ../../globals/common.js
+
+functions:
+  # uberSingInHandlessBrowser:
+  #   handler: uberSignInHandler.handlessBrowser
+  #   events:
+  #     - http:
+  #         path: handlessBrowser/
+  #         method: GET
+  #         cors: true
+  #   layers:
+  #       - arn:aws:lambda:us-east-1:${file(../../commons/credentials.json):${self:provider.stage}.awsAccountId}:layer:node_js_layer:${file(../../commons/credentials.json):${self:provider.stage}.layerVersion}
+  # createHandlessBrowser:
+  #   handler: createHandler.handlessBrowser
+  #   events:
+  #     - http:
+  #         path: handlessBrowser/
+  #         method: GET
+  #         cors: true
+  #   layers:
+  #       - arn:aws:lambda:us-east-1:${file(../../commons/credentials.json):${self:provider.stage}.awsAccountId}:layer:node_js_layer:${file(../../commons/credentials.json):${self:provider.stage}.layerVersion}
+  doordashSignInHandlessBrowser:
+      warmup: true
+      timeout: 900
+      handler: doordashSignInHandler.handlessBrowser
+      events:
+        - http:
+            path: handlessBrowser/doordashSignIn
+            method: POST
+            cors: true
+        - sns:
+            topicName: doordashSignInSNS
+            displayName: doordashSignInSNS
+      layers:
+        - arn:${file(${self:custom.config}):layer}
+        - arn:aws:lambda:us-east-1:144214698071:layer:chromiun:1
+  doordashSignUpHandlessBrowser:
+    warmup: true
+    timeout: 900
+    handler: doordashSignUpHandler.handlessBrowser
+    events:
+      - http:
+          path: handlessBrowser/doordashSignUp
+          method: POST
+          cors: true
+      - sns:
+          topicName: doordashSignUpSNS
+          displayName: doordashSignUpSNS
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+      - arn:aws:lambda:us-east-1:144214698071:layer:chromiun:1
+       # don't remove this comment
+       #- arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:22
+
+  shiptSignInHandlessBrowser:
+    timeout: 900
+    handler: shiptSignInHandler.handlessBrowser
+    events:
+      - http:
+          path: handlessBrowser/shiptSignIn
+          method: POST
+          cors: true
+      - sns:
+          topicName: shiptSignInSNS
+          displayName: shiptSignInSNS
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+      - arn:aws:lambda:us-east-1:144214698071:layer:chromiun:1
+
+  shiptSignUpHandlessBrowser:
+    timeout: 900
+    handler: shiptSignUpHandler.handlessBrowser
+    events:
+      - http:
+          path: handlessBrowser/shiptSignUp
+          method: POST
+          cors: true
+      - sns:
+          topicName: shiptSignUpSNS
+          displayName: shiptSignUpSNS
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+      - arn:aws:lambda:us-east-1:144214698071:layer:chromiun:1
